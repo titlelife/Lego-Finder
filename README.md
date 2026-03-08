@@ -2,7 +2,7 @@
 
 A Telegram Mini App for LEGO collectors to search real-time prices of minifigures on **BrickLink** and **Avito**, plus **AI-powered photo recognition**.
 
----
+---Aiogram, fastapi, uvicorn, and html abcolute cinema
 
 ## ✨ Features
 
