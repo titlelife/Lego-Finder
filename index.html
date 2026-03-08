@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>LEGO Minifigure Price Finder</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Variables ── */
+    :root {
+      --yellow: #FFD700;
+      --yellow-dark: #E6B800;
+      --yellow-glow: rgba(255,215,0,0.35);
+      --red: #E3000B;
+      --red-dark: #B80009;
+      --blue: #006CB7;
+      --blue-light: #1A8FE3;
+      --dark: #0F0F13;
+      --dark2: #18181F;
+      --dark3: #22222C;
+      --dark4: #2C2C38;
+      --surface: #1E1E28;
+      --surface2: #252530;
+      --text: #F0F0F5;
+      --text-muted: #8888A0;
+      --border: rgba(255,255,255,0.08);
+      --radius: 16px;
+      --radius-sm: 10px;
+      --shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      font-family: 'Nunito', sans-serif;
+      background: var(--dark);
+      color: var(--text);
+      overflow-x: hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ══════════════════════════════════
+       LANGUAGE SCREEN
+    ══════════════════════════════════ */
+    #lang-screen {
+      position: fixed; inset: 0; z-index: 100;
+      background: var(--dark);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 32px;
+      padding: 32px;
+    }
+
+    .lang-logo {
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+    }
+
+    .lang-logo-brick {
+      font-size: 72px;
+      animation: bounceLogo 2s ease-in-out infinite;
+    }
+    @keyframes bounceLogo {
+      0%,100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    .lang-logo h1 {
+      font-size: 26px; font-weight: 900;
+      text-align: center; line-height: 1.2;
+    }
+    .lang-logo h1 span { color: var(--yellow); }
+
+    .lang-logo p {
+      font-size: 13px; color: var(--text-muted);
+      text-align: center;
+    }
+
+    .lang-btns {
+      display: flex; flex-direction: column; gap: 14px; width: 100%;
+      max-width: 300px;
+    }
+
+    .lang-btn {
+      display: flex; align-items: center; gap: 16px;
+      background: var(--dark3);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 24px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'Nunito', sans-serif;
+      color: var(--text);
+    }
+    .lang-btn:hover, .lang-btn:active {
+      border-color: var(--yellow);
+      background: var(--dark4);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px var(--yellow-glow);
+    }
+    .lang-btn .flag { font-size: 36px; }
+    .lang-btn .lang-info { text-align: left; }
+    .lang-btn .lang-name { font-size: 18px; font-weight: 800; }
+    .lang-btn .lang-sub { font-size: 12px; color: var(--text-muted); }
+
+    /* ══════════════════════════════════
+       MAIN APP
+    ══════════════════════════════════ */
+    #app {
+      display: none;
+      flex-direction: column;
+      min-height: 100vh;
+      padding-bottom: 90px;
+    }
+    #app.visible { display: flex; }
+
+    /* ── Header ── */
+    .header {
+      background: linear-gradient(135deg, var(--dark2) 0%, var(--dark3) 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 20px 14px;
+      display: flex; align-items: center; gap: 12px;
+      position: sticky; top: 0; z-index: 50;
+    }
+    .header-icon { font-size: 28px; }
+    .header-text h1 {
+      font-size: 17px; font-weight: 900;
+      line-height: 1.1;
+    }
+    .header-text h1 span { color: var(--yellow); }
+    .header-text p { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+
+    .lang-toggle {
+      margin-left: auto;
+      background: var(--dark4); border: 1px solid var(--border);
+      border-radius: 8px; padding: 6px 10px;
+      font-size: 11px; font-weight: 700;
+      color: var(--text-muted); cursor: pointer;
+      transition: all 0.2s; font-family: 'Nunito', sans-serif;
+    }
+    .lang-toggle:hover { border-color: var(--yellow); color: var(--yellow); }
+
+    /* ── Tab Navigation ── */
+    .tabs {
+      display: flex; gap: 10px;
+      padding: 16px 16px 0;
+    }
+
+    .tab {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; gap: 4px;
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 8px;
+      cursor: pointer; transition: all 0.2s;
+      font-family: 'Nunito', sans-serif;
+    }
+    .tab.active {
+      border-color: var(--yellow);
+      background: var(--dark3);
+      box-shadow: 0 0 20px var(--yellow-glow);
+    }
+    .tab .tab-icon { font-size: 24px; }
+    .tab .tab-label {
+      font-size: 11px; font-weight: 700;
+      color: var(--text-muted); text-align: center;
+      line-height: 1.2;
+    }
+    .tab.active .tab-label { color: var(--yellow); }
+
+    /* ── Content Panels ── */
+    .panel { display: none; padding: 16px; }
+    .panel.active { display: block; }
+
+    /* ── Search Panel ── */
+    .search-box {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .search-label {
+      font-size: 12px; font-weight: 700;
+      color: var(--text-muted); text-transform: uppercase;
+      letter-spacing: 0.08em; margin-bottom: 10px;
+      display: flex; align-items: center; gap: 6px;
+    }
+
+    .search-row {
+      display: flex; gap: 10px;
+    }
+
+    .search-input {
+      flex: 1;
+      background: var(--dark3);
+      border: 2px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      font-size: 15px; font-weight: 600;
+      color: var(--text); font-family: 'Nunito', sans-serif;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-input::placeholder { color: var(--text-muted); font-weight: 400; }
+    .search-input:focus { border-color: var(--yellow); }
+
+    .search-btn {
+      background: var(--yellow);
+      border: none; border-radius: var(--radius-sm);
+      padding: 12px 18px;
+      font-size: 20px; cursor: pointer;
+      transition: all 0.15s; flex-shrink: 0;
+    }
+    .search-btn:active { transform: scale(0.93); background: var(--yellow-dark); }
+
+    .search-hints {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      margin-top: 10px;
+    }
+    .hint-chip {
+      background: var(--dark4);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 10px;
+      font-size: 11px; font-weight: 600;
+      color: var(--text-muted); cursor: pointer;
+      transition: all 0.15s;
+    }
+    .hint-chip:hover { border-color: var(--yellow); color: var(--yellow); }
+
+    /* ── Results ── */
+    .results-container { display: flex; flex-direction: column; gap: 14px; }
+
+    .result-card {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      animation: slideUp 0.3s ease both;
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .result-card:nth-child(2) { animation-delay: 0.1s; }
+    .result-card:nth-child(3) { animation-delay: 0.2s; }
+
+    .result-header {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .result-thumb {
+      width: 56px; height: 56px;
+      border-radius: 10px;
+      background: var(--dark3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 30px; flex-shrink: 0;
+      overflow: hidden;
+    }
+    .result-thumb img {
+      width: 100%; height: 100%; object-fit: contain;
+    }
+
+    .result-info { flex: 1; min-width: 0; }
+    .result-name {
+      font-size: 15px; font-weight: 800;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .result-id {
+      font-size: 11px; color: var(--text-muted);
+      font-family: 'Space Mono', monospace;
+      margin-top: 2px;
+    }
+
+    .demo-badge {
+      background: rgba(255,215,0,0.15);
+      border: 1px solid rgba(255,215,0,0.4);
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 10px; font-weight: 700;
+      color: var(--yellow); flex-shrink: 0;
+    }
+
+    /* Price sources */
+    .price-sources {
+      display: grid; grid-template-columns: 1fr 1fr;
+    }
+
+    .price-source {
+      padding: 14px 16px;
+      border-right: 1px solid var(--border);
+    }
+    .price-source:last-child { border-right: none; }
+
+    .source-header {
+      display: flex; align-items: center; gap: 6px;
+      margin-bottom: 10px;
+    }
+    .source-logo {
+      width: 20px; height: 20px;
+      border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 900;
+    }
+    .source-logo.bricklink { background: #E63327; color: white; }
+    .source-logo.avito { background: #00AAFF; color: white; }
+    .source-name { font-size: 12px; font-weight: 700; color: var(--text-muted); }
+
+    .price-avg {
+      font-size: 22px; font-weight: 900;
+      color: var(--yellow); line-height: 1;
+    }
+    .price-currency { font-size: 12px; font-weight: 700; opacity: 0.7; }
+
+    .price-range {
+      font-size: 11px; color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .price-meta {
+      font-size: 10px; color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .no-data {
+      font-size: 12px; color: var(--text-muted);
+      font-style: italic; padding-top: 4px;
+    }
+
+    .source-link {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 10px; color: var(--blue-light);
+      text-decoration: none; margin-top: 8px;
+      font-weight: 700;
+    }
+    .source-link:hover { color: var(--yellow); }
+
+    /* ── Photo Panel ── */
+    .photo-upload-area {
+      background: var(--surface);
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 16px;
+    }
+    .photo-upload-area:hover, .photo-upload-area.drag-over {
+      border-color: var(--yellow);
+      background: var(--dark3);
+    }
+    .upload-icon { font-size: 52px; margin-bottom: 12px; }
+    .upload-title { font-size: 16px; font-weight: 800; margin-bottom: 6px; }
+    .upload-sub { font-size: 12px; color: var(--text-muted); }
+    #photo-input { display: none; }
+
+    .camera-btn {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      background: linear-gradient(135deg, var(--red), var(--red-dark));
+      border: none; border-radius: var(--radius);
+      padding: 15px 24px; width: 100%;
+      font-size: 15px; font-weight: 800;
+      color: white; cursor: pointer;
+      font-family: 'Nunito', sans-serif;
+      transition: all 0.15s; margin-bottom: 12px;
+    }
+    .camera-btn:active { transform: scale(0.97); }
+
+    .gallery-btn {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      background: var(--dark3);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 13px 24px; width: 100%;
+      font-size: 14px; font-weight: 700;
+      color: var(--text); cursor: pointer;
+      font-family: 'Nunito', sans-serif;
+      transition: all 0.15s;
+    }
+    .gallery-btn:hover { border-color: var(--blue-light); color: var(--blue-light); }
+
+    /* ── Identify Result ── */
+    .identify-result {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      animation: slideUp 0.3s ease;
+    }
+
+    .identify-hero {
+      position: relative;
+      background: var(--dark3);
+    }
+    .identify-hero img {
+      width: 100%; height: 180px;
+      object-fit: cover; display: block;
+    }
+    .identify-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 50%);
+    }
+    .identify-label {
+      position: absolute; bottom: 12px; left: 14px; right: 14px;
+    }
+    .confidence-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      border-radius: 20px; padding: 3px 10px;
+      font-size: 10px; font-weight: 800; margin-bottom: 6px;
+    }
+    .confidence-badge.high { background: rgba(0,200,80,0.2); color: #00C850; border: 1px solid rgba(0,200,80,0.4); }
+    .confidence-badge.medium { background: rgba(255,165,0,0.2); color: #FFA500; border: 1px solid rgba(255,165,0,0.4); }
+    .confidence-badge.low { background: rgba(255,50,50,0.2); color: #FF5050; border: 1px solid rgba(255,50,50,0.4); }
+
+    .identify-name-overlay {
+      font-size: 16px; font-weight: 900; color: white;
+    }
+
+    .identify-details { padding: 16px; }
+    .detail-row {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      padding: 8px 0; border-bottom: 1px solid var(--border);
+    }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-key { font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; }
+    .detail-val { font-size: 13px; font-weight: 700; text-align: right; max-width: 60%; }
+
+    .search-from-photo-btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      background: var(--yellow);
+      border: none; border-radius: var(--radius-sm);
+      padding: 13px; width: 100%; margin-top: 14px;
+      font-size: 14px; font-weight: 800;
+      color: var(--dark); cursor: pointer;
+      font-family: 'Nunito', sans-serif;
+      transition: all 0.15s;
+    }
+    .search-from-photo-btn:active { transform: scale(0.97); background: var(--yellow-dark); }
+
+    /* ── Loading States ── */
+    .loading-card {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      text-align: center;
+    }
+
+    .spinner {
+      width: 44px; height: 44px;
+      border: 3px solid var(--border);
+      border-top-color: var(--yellow);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-dots span {
+      display: inline-block; width: 8px; height: 8px;
+      border-radius: 50%; background: var(--yellow);
+      margin: 0 3px;
+      animation: dotPulse 1.2s ease-in-out infinite;
+    }
+    .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes dotPulse {
+      0%,80%,100% { transform: scale(0.6); opacity: 0.4; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+    .loading-text { font-size: 14px; font-weight: 700; color: var(--text-muted); margin-top: 10px; }
+
+    /* ── Error / Empty ── */
+    .empty-state {
+      text-align: center; padding: 48px 20px;
+      color: var(--text-muted);
+    }
+    .empty-state .empty-icon { font-size: 52px; margin-bottom: 14px; }
+    .empty-state p { font-size: 14px; font-weight: 600; line-height: 1.5; }
+
+    .error-banner {
+      background: rgba(227,0,11,0.15);
+      border: 1px solid rgba(227,0,11,0.4);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      font-size: 13px; font-weight: 700;
+      color: #FF6B6B; margin-bottom: 16px;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    /* ── Bottom Nav ── */
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--dark2);
+      border-top: 1px solid var(--border);
+      display: flex; padding: 10px 16px 14px;
+      gap: 10px; z-index: 50;
+    }
+
+    .nav-btn {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; gap: 4px;
+      background: none; border: none;
+      cursor: pointer; font-family: 'Nunito', sans-serif;
+      padding: 8px; border-radius: var(--radius-sm);
+      transition: all 0.15s;
+    }
+    .nav-btn.active { background: var(--dark4); }
+    .nav-btn .nav-icon { font-size: 22px; }
+    .nav-btn .nav-label {
+      font-size: 10px; font-weight: 700;
+      color: var(--text-muted);
+    }
+    .nav-btn.active .nav-label { color: var(--yellow); }
+
+    /* ── AI Camera Scanner ── */
+    .scanner-frame {
+      position: relative; background: var(--dark3);
+      border-radius: var(--radius); overflow: hidden;
+      margin-bottom: 14px; aspect-ratio: 4/3;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .scanner-preview {
+      width: 100%; height: 100%; object-fit: cover;
+    }
+    .scanner-overlay {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      pointer-events: none;
+    }
+    .scanner-box {
+      width: 60%; aspect-ratio: 1;
+      border: 3px solid var(--yellow);
+      border-radius: 14px;
+      box-shadow: 0 0 0 2000px rgba(0,0,0,0.4);
+      animation: scannerPulse 2s ease-in-out infinite;
+    }
+    @keyframes scannerPulse {
+      0%,100% { box-shadow: 0 0 0 2000px rgba(0,0,0,0.4), 0 0 20px var(--yellow-glow); }
+      50% { box-shadow: 0 0 0 2000px rgba(0,0,0,0.5), 0 0 40px var(--yellow-glow); }
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--dark4); border-radius: 4px; }
+
+    /* Transitions */
+    .fade-in { animation: fadeIn 0.4s ease; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  </style>
+</head>
+<body>
+
+<!-- ══ LANGUAGE SELECTION ══ -->
+<div id="lang-screen">
+  <div class="lang-logo">
+    <div class="lang-logo-brick">🧱</div>
+    <h1>LEGO<span>Price</span>Finder</h1>
+    <p>Minifigure collector's tool</p>
+  </div>
+  <div class="lang-btns">
+    <button class="lang-btn" onclick="selectLang('en')">
+      <span class="flag">🇺🇸</span>
+      <div class="lang-info">
+        <div class="lang-name">English</div>
+        <div class="lang-sub">BrickLink & Avito prices</div>
+      </div>
+    </button>
+    <button class="lang-btn" onclick="selectLang('ru')">
+      <span class="flag">🇷🇺</span>
+      <div class="lang-info">
+        <div class="lang-name">Русский</div>
+        <div class="lang-sub">Цены BrickLink и Авито</div>
+      </div>
+    </button>
+  </div>
+</div>
+
+<!-- ══ MAIN APP ══ -->
+<div id="app">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-icon">🧱</div>
+    <div class="header-text">
+      <h1>LEGO <span>Price</span>Finder</h1>
+      <p id="header-sub">Minifigure collector's tool</p>
+    </div>
+    <button class="lang-toggle" id="lang-btn" onclick="showLangScreen()">🌐 EN</button>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" id="tab-search" onclick="switchTab('search')">
+      <span class="tab-icon">🔍</span>
+      <span class="tab-label" data-i18n="tab_search">Search\nFigures</span>
+    </div>
+    <div class="tab" id="tab-photo" onclick="switchTab('photo')">
+      <span class="tab-icon">📷</span>
+      <span class="tab-label" data-i18n="tab_photo">AI Photo\nScan</span>
+    </div>
+  </div>
+
+  <!-- Search Panel -->
+  <div class="panel active" id="panel-search">
+    <div class="search-box">
+      <div class="search-label">
+        <span>🔎</span>
+        <span data-i18n="search_label">Search by name or BrickLink ID</span>
+      </div>
+      <div class="search-row">
+        <input
+          type="text"
+          class="search-input"
+          id="search-input"
+          placeholder="e.g. sw0001, Luke Skywalker"
+          data-placeholder-en="e.g. sw0001, Luke Skywalker"
+          data-placeholder-ru="напр. sw0001, Люк Скайуокер"
+        />
+        <button class="search-btn" id="search-btn" onclick="doSearch()">🔍</button>
+      </div>
+      <div class="search-hints" id="search-hints">
+        <span class="hint-chip" onclick="useHint('sw0001')">sw0001</span>
+        <span class="hint-chip" onclick="useHint('hp001')">hp001</span>
+        <span class="hint-chip" onclick="useHint('col001')">col001</span>
+        <span class="hint-chip" onclick="useHint('njo001')">njo001</span>
+        <span class="hint-chip" onclick="useHint('cas001')">cas001</span>
+      </div>
+    </div>
+
+    <div id="search-results">
+      <div class="empty-state">
+        <div class="empty-icon">🧱</div>
+        <p data-i18n="search_empty">Enter a minifigure name or BrickLink ID<br>to see current prices</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Photo Panel -->
+  <div class="panel" id="panel-photo">
+    <input type="file" id="photo-input" accept="image/*" onchange="handlePhotoUpload(event)" />
+
+    <button class="camera-btn" onclick="openCamera()">
+      <span>📷</span>
+      <span data-i18n="camera_btn">Take Photo</span>
+    </button>
+    <button class="gallery-btn" onclick="openGallery()">
+      <span>🖼️</span>
+      <span data-i18n="gallery_btn">Choose from Gallery</span>
+    </button>
+
+    <div style="margin-top: 14px;" id="photo-results">
+      <div class="empty-state">
+        <div class="empty-icon">📷</div>
+        <p data-i18n="photo_empty">Take a photo of your LEGO minifigure<br>and AI will identify it</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <div class="bottom-nav">
+    <button class="nav-btn active" id="nav-search" onclick="switchTab('search')">
+      <span class="nav-icon">🔍</span>
+      <span class="nav-label" data-i18n="nav_search">Search</span>
+    </button>
+    <button class="nav-btn" id="nav-photo" onclick="switchTab('photo')">
+      <span class="nav-icon">📷</span>
+      <span class="nav-label" data-i18n="nav_photo">AI Photo</span>
+    </button>
+  </div>
+
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// i18n
+// ══════════════════════════════════════════
+const STRINGS = {
+  en: {
+    header_sub: "Minifigure collector's tool",
+    tab_search: "Search\nFigures",
+    tab_photo: "AI Photo\nScan",
+    search_label: "Search by name or BrickLink ID",
+    search_empty: "Enter a minifigure name or BrickLink ID\nto see current prices",
+    camera_btn: "Take Photo",
+    gallery_btn: "Choose from Gallery",
+    photo_empty: "Take a photo of your LEGO minifigure\nand AI will identify it",
+    nav_search: "Search",
+    nav_photo: "AI Photo",
+    searching: "Searching prices...",
+    analyzing: "AI is analyzing your photo...",
+    bricklink_avg: "Avg Price",
+    min: "Min",
+    max: "Max",
+    sold: "sales",
+    listings: "listings",
+    no_data: "No data",
+    view_on: "View on",
+    search_from_photo: "🔍 Search Prices",
+    confidence_high: "✓ High confidence",
+    confidence_medium: "≈ Medium confidence",
+    confidence_low: "? Low confidence",
+    not_identified: "Could not identify the minifigure",
+    theme: "Theme",
+    year: "Year",
+    set_id: "BrickLink ID",
+    description: "Description",
+    error_search: "Search failed. Check API keys in .env file.",
+    error_photo: "Photo analysis failed. Configure ANTHROPIC_API_KEY.",
+    demo_note: "Demo data — configure API keys for live prices",
+    lang_toggle: "🌐 EN",
+    lang_toggle_ru: "🌐 RU",
+  },
+  ru: {
+    header_sub: "Инструмент коллекционера",
+    tab_search: "Поиск\nФигурок",
+    tab_photo: "ИИ Фото\nСканер",
+    search_label: "Поиск по названию или ID BrickLink",
+    search_empty: "Введите название минифигурки или ID BrickLink\nдля поиска актуальных цен",
+    camera_btn: "Сделать Фото",
+    gallery_btn: "Выбрать из Галереи",
+    photo_empty: "Сфотографируйте LEGO минифигурку\nи ИИ её определит",
+    nav_search: "Поиск",
+    nav_photo: "ИИ Фото",
+    searching: "Ищем цены...",
+    analyzing: "ИИ анализирует фото...",
+    bricklink_avg: "Средняя цена",
+    min: "Мин",
+    max: "Макс",
+    sold: "продаж",
+    listings: "объявлений",
+    no_data: "Нет данных",
+    view_on: "Смотреть на",
+    search_from_photo: "🔍 Найти цены",
+    confidence_high: "✓ Высокая точность",
+    confidence_medium: "≈ Средняя точность",
+    confidence_low: "? Низкая точность",
+    not_identified: "Фигурку не удалось определить",
+    theme: "Тема",
+    year: "Год",
+    set_id: "ID BrickLink",
+    description: "Описание",
+    error_search: "Ошибка поиска. Проверьте API ключи в .env файле.",
+    error_photo: "Ошибка анализа. Настройте ANTHROPIC_API_KEY.",
+    demo_note: "Демо данные — настройте API ключи для реальных цен",
+    lang_toggle: "🌐 RU",
+    lang_toggle_ru: "🌐 EN",
+  }
+};
+
+let currentLang = 'en';
+let currentTab = 'search';
+
+// ── Telegram WebApp setup ──
+const tg = window.Telegram?.WebApp;
+if (tg) {
+  tg.ready();
+  tg.expand();
+  tg.setHeaderColor('#0F0F13');
+  tg.setBackgroundColor('#0F0F13');
+}
+
+// ── Language ──
+function selectLang(lang) {
+  currentLang = lang;
+  localStorage.setItem('lego_lang', lang);
+  document.getElementById('lang-screen').style.display = 'none';
+  document.getElementById('app').classList.add('visible');
+  applyLang();
+}
+
+function showLangScreen() {
+  document.getElementById('lang-screen').style.display = 'flex';
+  document.getElementById('app').classList.remove('visible');
+}
+
+function t(key) {
+  return STRINGS[currentLang][key] || STRINGS['en'][key] || key;
+}
+
+function applyLang() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    const text = t(key);
+    if (el.tagName === 'INPUT') {
+      el.placeholder = text;
+    } else {
+      el.innerHTML = text.replace(/\\n/g, '<br>').replace(/\n/g, '<br>');
+    }
+  });
+
+  document.getElementById('header-sub').textContent = t('header_sub');
+  document.getElementById('lang-btn').textContent = currentLang === 'en' ? '🌐 RU' : '🌐 EN';
+
+  const inp = document.getElementById('search-input');
+  inp.placeholder = currentLang === 'en'
+    ? inp.dataset.placeholderEn
+    : inp.dataset.placeholderRu;
+}
+
+// ── Tab switching ──
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  document.getElementById(`panel-${tab}`).classList.add('active');
+  document.getElementById(`nav-${tab}`).classList.add('active');
+}
+
+// ── Search ──
+const API_BASE = window.location.origin;
+
+function useHint(val) {
+  document.getElementById('search-input').value = val;
+  doSearch();
+}
+
+async function doSearch() {
+  const query = document.getElementById('search-input').value.trim();
+  if (!query) return;
+
+  const resultsEl = document.getElementById('search-results');
+  resultsEl.innerHTML = `
+    <div class="loading-card">
+      <div class="spinner"></div>
+      <div class="loading-dots"><span></span><span></span><span></span></div>
+      <p class="loading-text">${t('searching')}</p>
+    </div>`;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/search`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, language: currentLang })
+    });
+
+    if (!res.ok) throw new Error('API error');
+    const data = await res.json();
+    renderSearchResults(data);
+  } catch (e) {
+    resultsEl.innerHTML = `
+      <div class="error-banner">⚠️ ${t('error_search')}</div>
+      <div class="empty-state"><div class="empty-icon">😕</div>
+      <p>${t('error_search')}</p></div>`;
+  }
+}
+
+// Enter key search
+document.getElementById('search-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doSearch();
+});
+
+function fmt(num, decimals = 2) {
+  if (num == null) return null;
+  return Number(num).toLocaleString(currentLang === 'ru' ? 'ru-RU' : 'en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: decimals
+  });
+}
+
+function renderSearchResults(data) {
+  const el = document.getElementById('search-results');
+
+  const bl = data.bricklink;
+  const av = data.avito;
+
+  let demoHtml = data.is_demo
+    ? `<div style="padding:8px 16px;font-size:10px;color:var(--yellow);background:rgba(255,215,0,0.07);border-top:1px solid var(--border);">⚠️ ${t('demo_note')}</div>`
+    : '';
+
+  const imgHtml = data.image_url
+    ? `<img src="${data.image_url}" alt="${data.name}" onerror="this.parentNode.innerHTML='🧱'" />`
+    : '🧱';
+
+  const blHtml = bl ? `
+    <div class="price-avg">${fmt(bl.avg_price)} <span class="price-currency">${bl.currency}</span></div>
+    <div class="price-range">${t('min')}: ${fmt(bl.min_price)} · ${t('max')}: ${fmt(bl.max_price)}</div>
+    <div class="price-meta">${bl.qty_sold ? `${bl.qty_sold} ${t('sold')}` : ''}</div>
+    <a class="source-link" href="${bl.url}" target="_blank">↗ ${t('view_on')} BrickLink</a>
+  ` : `<div class="no-data">${t('no_data')}</div>`;
+
+  const avHtml = av ? `
+    <div class="price-avg">${fmt(av.avg_price, 0)} <span class="price-currency">${av.currency}</span></div>
+    <div class="price-range">${t('min')}: ${fmt(av.min_price, 0)} · ${t('max')}: ${fmt(av.max_price, 0)}</div>
+    <div class="price-meta">${av.listings_count ? `${av.listings_count} ${t('listings')}` : ''}</div>
+    <a class="source-link" href="${av.url}" target="_blank">↗ ${t('view_on')} Авито</a>
+  ` : `<div class="no-data">${t('no_data')}</div>`;
+
+  el.innerHTML = `
+    <div class="results-container">
+      <div class="result-card fade-in">
+        <div class="result-header">
+          <div class="result-thumb">${imgHtml}</div>
+          <div class="result-info">
+            <div class="result-name">${data.name || data.query}</div>
+            <div class="result-id">${data.query.toUpperCase()}</div>
+          </div>
+          ${data.is_demo ? `<div class="demo-badge">DEMO</div>` : ''}
+        </div>
+        <div class="price-sources">
+          <div class="price-source">
+            <div class="source-header">
+              <div class="source-logo bricklink">B</div>
+              <span class="source-name">BrickLink</span>
+            </div>
+            ${blHtml}
+          </div>
+          <div class="price-source">
+            <div class="source-header">
+              <div class="source-logo avito">A</div>
+              <span class="source-name">Авито</span>
+            </div>
+            ${avHtml}
+          </div>
+        </div>
+        ${demoHtml}
+      </div>
+    </div>`;
+}
+
+// ── Photo / AI ──
+function openCamera() {
+  const inp = document.getElementById('photo-input');
+  inp.setAttribute('capture', 'camera');
+  inp.click();
+}
+
+function openGallery() {
+  const inp = document.getElementById('photo-input');
+  inp.removeAttribute('capture');
+  inp.click();
+}
+
+async function handlePhotoUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const resultsEl = document.getElementById('photo-results');
+
+  // Show preview
+  const previewUrl = URL.createObjectURL(file);
+
+  resultsEl.innerHTML = `
+    <div class="scanner-frame">
+      <img class="scanner-preview" src="${previewUrl}" />
+      <div class="scanner-overlay"><div class="scanner-box"></div></div>
+    </div>
+    <div class="loading-card">
+      <div class="spinner"></div>
+      <div class="loading-dots"><span></span><span></span><span></span></div>
+      <p class="loading-text">${t('analyzing')}</p>
+    </div>`;
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const res = await fetch(`${API_BASE}/api/identify`, {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!res.ok) throw new Error('API error');
+    const data = await res.json();
+    renderPhotoResult(data, previewUrl);
+  } catch (e) {
+    resultsEl.innerHTML = `
+      <div class="error-banner">⚠️ ${t('error_photo')}</div>
+      <div class="empty-state"><div class="empty-icon">😕</div><p>${t('error_photo')}</p></div>`;
+  }
+
+  event.target.value = '';
+}
+
+function renderPhotoResult(data, previewUrl) {
+  const el = document.getElementById('photo-results');
+  const id = data.identification || {};
+  const prices = data.prices;
+
+  const confidenceClass = id.confidence || 'low';
+  const confidenceLabel = t(`confidence_${confidenceClass}`);
+
+  let detailsHtml = '';
+  if (id.theme) detailsHtml += `<div class="detail-row"><span class="detail-key">${t('theme')}</span><span class="detail-val">${id.theme}</span></div>`;
+  if (id.year) detailsHtml += `<div class="detail-row"><span class="detail-key">${t('year')}</span><span class="detail-val">${id.year}</span></div>`;
+  if (id.set_number) detailsHtml += `<div class="detail-row"><span class="detail-key">${t('set_id')}</span><span class="detail-val" style="font-family:'Space Mono',monospace;font-size:12px">${id.set_number}</span></div>`;
+  if (id.description) detailsHtml += `<div class="detail-row"><span class="detail-key">${t('description')}</span><span class="detail-val" style="font-size:11px">${id.description}</span></div>`;
+
+  let pricesHtml = '';
+  if (prices) {
+    const bl = prices.bricklink;
+    const av = prices.avito;
+    pricesHtml = `
+      <div style="margin-top:14px">
+        <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px">💰 ${currentLang === 'ru' ? 'Цены' : 'Prices'}</div>
+        <div class="result-card" style="margin:0">
+          <div class="price-sources">
+            <div class="price-source">
+              <div class="source-header"><div class="source-logo bricklink">B</div><span class="source-name">BrickLink</span></div>
+              ${bl ? `<div class="price-avg">${fmt(bl.avg_price)} <span class="price-currency">${bl.currency}</span></div>` : `<div class="no-data">${t('no_data')}</div>`}
+            </div>
+            <div class="price-source">
+              <div class="source-header"><div class="source-logo avito">A</div><span class="source-name">Авито</span></div>
+              ${av ? `<div class="price-avg">${fmt(av.avg_price, 0)} <span class="price-currency">${av.currency}</span></div>` : `<div class="no-data">${t('no_data')}</div>`}
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  const searchQuery = data.search_query || '';
+
+  el.innerHTML = `
+    <div class="identify-result">
+      <div class="identify-hero">
+        <img src="${previewUrl}" alt="Minifigure" />
+        <div class="identify-overlay"></div>
+        <div class="identify-label">
+          <div class="confidence-badge ${confidenceClass}">${confidenceLabel}</div>
+          <div class="identify-name-overlay">${id.identified ? (id.name || '') : t('not_identified')}</div>
+        </div>
+      </div>
+      <div class="identify-details">
+        ${detailsHtml}
+        ${pricesHtml}
+        ${searchQuery ? `<button class="search-from-photo-btn" onclick="searchFromPhoto('${searchQuery}')">${t('search_from_photo')}</button>` : ''}
+      </div>
+    </div>`;
+}
+
+function searchFromPhoto(query) {
+  document.getElementById('search-input').value = query;
+  switchTab('search');
+  doSearch();
+}
+
+// ── Init ──
+(function init() {
+  const saved = localStorage.getItem('lego_lang');
+  if (saved) {
+    selectLang(saved);
+  }
+})();
+</script>
+</body>
+</html>
